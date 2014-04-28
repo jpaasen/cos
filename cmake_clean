@@ -1,0 +1,60 @@
+#!/bin/bash
+
+#NOT_PATH=-and -not -path *sys/* -not -path "*Release/*" -and -not -path "*Debug/*" -and -not -path "*Profile/*"
+
+DELETE_THIS="
+CMakeFiles
+Makefile
+cmake_install.cmake
+CMakeCache.txt
+cython_debug
+SdkMasterLog.csv
+deviceQuery.txt
+*.so
+*.a
+*.o
+*.pyc
+*.html
+*.cxx
+"
+#.cproject
+#.project
+
+for i in ${DELETE_THIS}; do
+   find . -iname "$i" \
+          -path "*apps/*" \
+          -path "*cmake/*" \
+          -path "*cuda/*" \
+          -path "*framework/*" \
+          -path "*jo/*" \
+          -path "*jp/*" \
+          -path "*lib/*" \
+          -exec rm -r '{}' \;
+   rm -r "$i"
+done
+
+# for i in ${DELETE_THIS}; do
+#    find . -iname "$i" \
+#           -not -path *sys/* \
+#           -not -path "*Release/*" \
+#           -not -path "*Debug/*" \
+#           -not -path "*Profile/*" \
+#           -exec rm -r '{}' \;
+# done
+
+#find . -iname "CMakeFiles" -and -not -path *sys/* -not -path "*Release/*" -and -not -path "*Debug/*" -and -not -path "*Profile/*" -exec rm -r '{}' \;
+#find . -iname "Makefile" -and -not -path *sys/* -not -path "*Release/*" -and -not -path "*Debug/*" -and -not -path "*Profile/*" -exec rm -r '{}' \;
+#find . -iname "cmake_install.cmake" -and -not -path *sys/* -not -path "*Release/*" -and -not -path "*Debug/*" -and -not -path "*Profile/*" -exec rm -r '{}' \;
+#find . -iname "CMakeCache.txt" -and -not -path *sys/* -not -path "*Release/*" -and -not -path "*Debug/*" -and -not -path "*Profile/*" -exec rm -r '{}' \;
+#find . -iname "cython_debug" -and -not -path *sys/* -not -path "*Release/*" -and -not -path "*Debug/*" -and -not -path "*Profile/*" -exec rm -r '{}' \;
+#find . -iname "SdkMasterLog.csv" -and -not -path *sys/* -not -path "*Release/*" -and -not -path "*Debug/*" -and -not -path "*Profile/*" -exec rm -r '{}' \;
+#find . -iname "deviceQuery.txt" -and -not -path *sys/* -not -path "*Release/*" -and -not -path "*Debug/*" -and -not -path "*Profile/*" -exec rm -r '{}' \;
+#find . -iname "*.so" -and -not -path *sys/* -not -path "*Release/*" -and -not -path "*Debug/*" -and -not -path "*Profile/*" -exec rm -r '{}' \;
+#find . -iname "*.a" -and -not -path *sys/* -not -path "*Release/*" -and -not -path "*Debug/*" -and -not -path "*Profile/*" -exec rm -r '{}' \;
+#find . -iname "*.o" -and -not -path *sys/* -not -path "*Release/*" -and -not -path "*Debug/*" -and -not -path "*Profile/*" -exec rm -r '{}' \;
+#find . -iname "*.pyc" -and -not -path *sys/* -not -path "*Release/*" -and -not -path "*Debug/*" -and -not -path "*Profile/*" -exec rm -r '{}' \;
+#find . -iname ".cproject" -and -not -path *sys/* -not -path "*Release/*" -and -not -path "*Debug/*" -and -not -path "*Profile/*" -exec rm -r '{}' \;
+#find . -iname ".project" -and -not -path *sys/* -not -path "*Release/*" -and -not -path "*Debug/*" -and -not -path "*Profile/*" -exec rm -r '{}' \;
+#find . -iname "*.html" -and -not -path *sys/* -not -path "*Release/*" -and -not -path "*Debug/*" -and -not -path "*Profile/*" -exec rm -r '{}' \;
+#find . -iname "*.cxx" -and -not -path *sys/* -not -path "*Release/*" -and -not -path "*Debug/*" -and -not -path "*Profile/*" -exec rm -r '{}' \;
+

@@ -1,0 +1,2 @@
+ 
+ gcc -o prof.so -shared prof.c -fPIC -lpython2.7 -lprofiler -I/usr/include/python2.7

@@ -1,0 +1,217 @@
+#cython: profile=False
+#cython: cdivision=True
+#cython: wraparound=False
+#cython: boundscheck=False
+# filename: lcacx.pyx
+
+import framework.mynumpy as np
+
+###CYTHON_MODE
+
+#################
+## Cython mode ##
+#################
+
+cimport numpy as np
+cimport cython
+
+CTYPE = np.complex128
+FTYPE = np.float64
+
+ctypedef np.complex_t CTYPE_t
+ctypedef double complex DCTYPE_t
+ctypedef np.float_t FTYPE_t
+ctypedef np.int_t ITYPE_t
+
+
+def lca(np.ndarray[DCTYPE_t, ndim=3] Z_in   not None,
+        np.ndarray[FTYPE_t,  ndim=2] wrf_in not None):
+   
+   cdef int                          Ny
+   cdef int                          Nx
+   cdef int                          Nw
+   cdef np.ndarray[DCTYPE_t, ndim=3] Z
+        
+   cdef int                          Y_AVG
+   cdef int                          Y_MID
+   cdef int                          X_AVG
+   cdef int                          X_MID
+   cdef np.ndarray[FTYPE_t,  ndim=2] wrf
+   
+   cdef np.ndarray[DCTYPE_t, ndim=1] new_y
+   cdef np.ndarray[ITYPE_t,  ndim=1] new_w
+   cdef np.ndarray[FTYPE_t,  ndim=2] img_y_segment_abs
+   cdef np.ndarray[FTYPE_t,  ndim=1] img_y_segment_abs_sum
+   
+   cdef FTYPE_t                      w_sum_min
+   cdef np.ndarray[FTYPE_t,  ndim=1] w_sum
+   
+   cdef np.ndarray[DCTYPE_t, ndim=2] img_y
+   cdef np.ndarray[FTYPE_t,  ndim=2] img_y_abs
+   cdef np.ndarray[DCTYPE_t, ndim=2] new_img
+   cdef np.ndarray[ITYPE_t,  ndim=2] new_win
+   cdef np.ndarray[DCTYPE_t, ndim=3] new_img_all
+   
+   cdef int x,y,w,xx,yy
+   
+   # For XY-averaging:
+   cdef np.ndarray[FTYPE_t,  ndim=3] img_abs
+   
+   ###CYTHON_MODE_END§
+   """PYTHON_MODE
+
+#################
+## Python mode ##
+#################
+
+def lca(Z_in, wrf_in):
+   
+PYTHON_MODE_END"""
+
+   
+   Nx = Z_in.shape[0] 
+   Ny = Z_in.shape[1]
+   Nw = Z_in.shape[2]
+   Z  = Z_in
+   
+   if wrf_in.ndim != 2:
+      print "You must specify a 2D 'wrf' filter. A (1,1) filter with the value 1 equals no filtering."
+      return
+   
+   Y_AVG = wrf_in.shape[0]
+   Y_MID = (Y_AVG-1)/2
+   X_AVG = wrf_in.shape[1]
+   X_MID = (X_AVG-1)/2 
+   wrf   = wrf_in
+   
+   # The filter must have odd number of rows/columns
+   if Y_AVG%2==0 or X_AVG%2==0:
+      print "The 'wrf' filter must have odd number of rows/columns."
+      return
+   
+   # If only range-values are supplied, and these are all 1's, then set the
+   # 'Y_ONLY_ONES' flag which will be used later to simplify computations.
+   if X_AVG == 1:
+      Y_ONLY_ONES = True
+      for y in range(Y_AVG):
+         if wrf[y,0] != 1:
+            Y_ONLY_ONES = False
+   else:
+      Y_ONLY_ONES = False
+   
+   
+   new_y                   = np.zeros((Ny,),           dtype=complex)
+   new_w                   = np.zeros((Ny,),           dtype=int)
+   img_y_segment_abs       = np.zeros((Nw,2*Y_AVG),    dtype=float)
+   img_y_segment_abs_sum   = np.zeros((Nw,),           dtype=float)
+
+   w_sum                   = np.zeros((Nw,),           dtype=float)
+   w_sum_min               = 0
+   
+   img_y                   = np.zeros((Nw,Ny+2*Y_MID), dtype=complex)
+   img_y_abs               = np.zeros((Nw,Ny+2*Y_MID), dtype=float)
+   new_img                 = np.zeros((Nx,Ny),         dtype=complex)
+   new_img_all             = np.zeros((Nx,Ny,Nw),      dtype=complex)
+   new_win                 = np.zeros((Nx,Ny),         dtype=int)
+   
+   # For XY-averaging:
+   img_abs                 = np.zeros((Nw,Nx,Ny),      dtype=float)
+
+   
+   # Select the window that yield the least power
+   if Y_AVG == 1 and X_AVG == 1 and wrf[0,0]:
+#      l = range(0,Nx)
+#      m = range(0,Ny)
+      l,m = np.meshgrid(range(0,Ny),range(0,Nx))
+      selected_window = np.abs(Z).argmin(2)
+      return Z[m,l,selected_window], selected_window
+   
+   ###############################
+   # Perform 'window averaging'. #
+   ###############################
+   # A way to make the beamformer estimate a pixel more accurately, the beamformer output
+   # may be computed for a 'window' of pixels around the one we wish to image, and the window
+   # that gave the overall lowest output power may be applied to the center pixel.
+   #
+   # It is common that the averaging window is comprised of only ones, and no averaging is
+   # required in azimuth. That mode is handled first, and will be less computationally
+   # intensive than the next 'else if' which handles arbitrary averaging windows.  
+   elif Y_ONLY_ONES:
+      
+      # Iterate over all azimuth coordinates
+      for x in range (Nx):
+         
+         # Compute the power of each range pixel (square them)
+         for y in range(Ny):
+            for w in range(Nw):
+               img_y[w,y] = Z[x,y,w]
+               img_y_abs[w,y] = img_y[w,y].real**2 + img_y[w,y].imag**2
+         
+         # Compute the beamformer output for the first y-segment
+         for w in range(Nw):
+            w_sum_min = 0
+            w_sum[w] = 0
+            for y in range(Y_AVG):
+               w_sum[w] += img_y_abs[w,y]
+            
+            # Store the beamformer output for this window in image archive
+            new_img_all[x,y,w]= img_y[w,Y_AVG]
+               
+            # Select the window that yielded the minimum output power of the beamformer
+            if w_sum[w] < w_sum_min or w==0:
+                  w_sum_min = w_sum[w]
+                  new_win[x,Y_AVG] = w
+                  new_img[x,Y_AVG] = img_y[w,Y_AVG]
+                  
+            
+         # Select a range segment:
+         for y in range(1+Y_MID,Ny-Y_MID):
+            # Compute the beamformer output for each of the windows
+            for w in range(Nw):
+               w_sum[w] += img_y_abs[w,y+Y_MID] - img_y_abs[w,y-Y_MID-1]
+               
+               # Store the beamformer output for this window in image archive
+               new_img_all[x,y,w]= img_y[w,y]
+                  
+               # Select the window that yielded the minimum output power of the beamformer
+               if w_sum[w] < w_sum_min or w==0:
+                  w_sum_min = w_sum[w]
+                  new_win[x,y] = w
+                  new_img[x,y] = img_y[w,y]
+         
+      return new_img, new_win, new_img_all
+                  
+   # Handle arbitrary window functions:
+   elif Y_AVG != 0 and X_AVG != 0:
+
+      # Compute the image absolute value
+      for y in range(Ny):
+         for x in range(Nx):
+            for w in range(Nw):
+               img_abs[w,x,y] = Z[x,y,w].real**2 + Z[x,y,w].imag**2
+               
+#      for w in range(Nw):
+#         img_abs[w,:,:] = Z[:,:,w]**2
+                              
+               
+      # Select a range segment:
+      for y in range(Y_MID,Ny-Y_MID):
+         # Select an azimuth segment:
+         for x in range(X_MID,Nx-X_MID):
+            # Compute the accumulated beamformer output for each of the windows
+            for w in range(Nw):
+               w_sum[w] = 0
+               for yy in range(2*Y_MID+1):
+                  for xx in range(2*X_MID+1):
+                     w_sum[w] += img_abs[w,y+yy-Y_MID,x+xx-X_MID]*wrf[yy,xx]
+
+               # Store the beamformer output for this window in image archive
+               new_img_all[x,y,w] = Z[x,y,w]
+                    
+               # Select the window that yielded the minimum output power of the beamformer
+               if w_sum[w] < w_sum_min or w==0:
+                  w_sum_min = w_sum[w]
+                  new_win[x,y] = w
+                  new_img[x,y] = Z[x,y,w]
+
+      return new_img, new_win, new_img_all

@@ -1,13 +1,32 @@
-# Compiled Object files
-*.slo
-*.lo
-*.o
-
-# Compiled Dynamic libraries
+*~
+*.pyc
 *.so
-*.dylib
-
-# Compiled Static libraries
-*.lai
-*.la
+*.o
 *.a
+*.html
+*.log
+*.cxx
+*.pdf
+*.out
+*.lst
+*.s
+py/src/*.c
+*prof
+*.pyd
+python/legacy/*
+.project
+.pydevproject
+.cproject
+.settings/*
+Debug/
+build/
+!BUILD_README.txt
+output.callgrind
+callgrind.out*
+CMakeCache.txt
+CMakeFiles
+Makefile
+cmake_install.cmake
+*Py.py
+Config.cmake
+data/
